@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -12,54 +12,106 @@
 
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <!-- html5-qrcode -->
     <script src="https://unpkg.com/html5-qrcode"></script>
-</head>
-<body class="bg-light">
 
-    <!-- Encabezado -->
-    <nav class="navbar navbar-dark bg-primary mb-4 shadow">
-        <div class="container-fluid">
-            <span class="navbar-brand mb-0 h1">💻 ÁNGEL MEJÍA - POS</span>
-            <span class="badge bg-light text-primary">Solución Inteligente</span>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #f4f6f9;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        [data-bs-theme="dark"] body {
+            background-color: #0f172a;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            color: #f8fafc;
+        }
+
+        .card-custom {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        [data-bs-theme="dark"] .card-custom {
+            background: rgba(30, 41, 59, 0.85);
+            border-color: rgba(51, 65, 85, 0.8);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn-theme-toggle {
+            border-radius: 50px;
+            padding: 5px 15px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        #reader {
+            border-radius: 12px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Navbar con botón de Modo Oscuro -->
+    <nav class="navbar navbar-dark bg-primary mb-4 shadow-sm">
+        <div class="container-fluid container">
+            <span class="navbar-brand mb-0 h1 d-flex align-items-center gap-2">
+                💻 ÁNGEL MEJÍA - POS
+            </span>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-outline-light btn-theme-toggle d-flex align-items-center gap-1" onclick="toggleTheme()" id="btn-theme">
+                    <i class="bi bi-moon-stars-fill"></i> <span id="theme-label">Modo Oscuro</span>
+                </button>
+            </div>
         </div>
     </nav>
 
     <div class="container mb-5">
         
-        <!-- Botón de Instalación PWA (Se muestra cuando Android lo detecta) -->
-        <div id="pwa-install-banner" class="alert alert-info border-0 shadow-sm text-center mb-4" style="display: none;">
+        <!-- Banner de Instalación PWA -->
+        <div id="pwa-install-banner" class="alert alert-info border-0 shadow-sm text-center mb-4 card-custom" style="display: none;">
             <p class="mb-2 fw-bold">📲 ¡Instala esta aplicación en tu teléfono!</p>
             <button id="btn-install-pwa" class="btn btn-primary fw-bold shadow-sm">
                 ➕ Instalar Ángel Mejía POS
             </button>
         </div>
 
-        <!-- Bloque BCV -->
-        <div class="card mb-4 shadow-sm border-0">
-            <div class="card-body text-center">
-                <h5 class="card-title text-muted">🏦 Tasa Oficial BCV</h5>
-                <h2 class="display-5 fw-bold text-primary" id="tasa-bcv">Cargando...</h2>
+        <!-- Módulo Tasa BCV -->
+        <div class="card card-custom mb-4 border-0">
+            <div class="card-body text-center p-4">
+                <h5 class="card-title text-muted fw-semibold mb-2">🏦 Tasa Oficial BCV</h5>
+                <h2 class="display-5 fw-bold text-primary my-2" id="tasa-bcv">Cargando...</h2>
                 <p class="text-muted small mb-3" id="sync-time">Última sync: -</p>
-                <button class="btn btn-outline-primary btn-sm" onclick="obtenerTasaBCV()">🔄 Sincronizar BCV</button>
+                <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="obtenerTasaBCV()">🔄 Sincronizar BCV</button>
             </div>
         </div>
 
-        <!-- Escáner -->
-        <div class="card mb-4 shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="card-title mb-3">📷 Escanear Producto</h5>
+        <!-- Escáner de Código de Barras -->
+        <div class="card card-custom mb-4 border-0">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-bold">📷 Escanear Producto</h5>
                 <div id="reader" style="width: 100%; min-height: 250px; background-color: #f8f9fa; display: none;" class="rounded border mb-3"></div>
-                <button id="btn-scan" class="btn btn-warning w-100 fw-bold text-white shadow-sm" onclick="toggleCamara()">
+                <button id="btn-scan" class="btn btn-warning w-100 fw-bold text-white shadow-sm py-2" onclick="toggleCamara()">
                     📷 ¡Escanea producto aquí!
                 </button>
             </div>
         </div>
 
-        <!-- Registro manual / datos producto -->
-        <div class="card mb-4 shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="card-title mb-3">➕ Registrar Producto</h5>
+        <!-- Formulario de Registro de Producto -->
+        <div class="card card-custom mb-4 border-0">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-bold">➕ Registrar Producto</h5>
                 <form id="form-producto" onsubmit="guardarProducto(event)">
                     <div class="mb-3">
                         <label class="form-label fw-bold">Código de Barras</label>
@@ -73,18 +125,18 @@
                         <label class="form-label fw-bold">Precio en Dólares ($)</label>
                         <input type="number" step="0.01" id="precio" class="form-control" placeholder="1.20" required>
                     </div>
-                    <button type="submit" class="btn btn-success w-100 fw-bold">💾 Guardar / Agregar</button>
+                    <button type="submit" class="btn btn-success w-100 fw-bold py-2">💾 Guardar / Agregar</button>
                 </form>
             </div>
         </div>
 
-        <!-- Tabla de Inventario / Carrito -->
-        <div class="card shadow-sm border-0">
-            <div class="card-body">
-                <h5 class="card-title mb-3">🛒 Inventario de Productos</h5>
+        <!-- Tabla de Inventario -->
+        <div class="card card-custom border-0">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-bold">🛒 Inventario de Productos</h5>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
-                        <thead class="table-light">
+                        <thead>
                             <tr>
                                 <th>Código</th>
                                 <th>Producto</th>
@@ -93,7 +145,6 @@
                             </tr>
                         </thead>
                         <tbody id="tabla-productos">
-                            <!-- Productos dinámicos -->
                         </tbody>
                     </table>
                 </div>
@@ -103,16 +154,35 @@
     </div>
 
     <script>
-        // Registro del Service Worker para PWA
+        // Modo Oscuro / Claro
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-bs-theme', newTheme);
+            
+            const btn = document.getElementById('btn-theme');
+            if (newTheme === 'dark') {
+                btn.innerHTML = '<i class="bi bi-sun-fill"></i> <span id="theme-label">Modo Claro</span>';
+            } else {
+                btn.innerHTML = '<i class="bi bi-moon-stars-fill"></i> <span id="theme-label">Modo Oscuro</span>';
+            }
+            localStorage.setItem('pos-theme', newTheme);
+        }
+
+        const savedTheme = localStorage.getItem('pos-theme') || 'light';
+        document.documentElement.setAttribute('data-bs-theme', savedTheme);
+
+        // Registro de Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
-                    .then(reg => console.log('Service Worker registrado con éxito', reg))
-                    .catch(err => console.error('Error al registrar Service Worker', err));
+                    .then(reg => console.log('SW activo', reg))
+                    .catch(err => console.error('Error SW', err));
             });
         }
 
-        // Lógica del Botón de Instalación PWA
+        // PWA Installation Banner
         let deferredPrompt;
         const pwaBanner = document.getElementById('pwa-install-banner');
         const installBtn = document.getElementById('btn-install-pwa');
@@ -134,23 +204,28 @@
             }
         });
 
-        // Lógica de la aplicación
+        // Lógica de Negocio y BCV
         let tasaActual = 0;
         let html5QrcodeScanner = null;
+        let productos = [];
 
         async function obtenerTasaBCV() {
+            const tasaElemento = document.getElementById('tasa-bcv');
+            tasaElemento.innerText = "Consultando...";
             try {
                 const res = await fetch('/api/bcv');
                 const data = await res.json();
                 if (data.tasa) {
                     tasaActual = data.tasa;
-                    document.getElementById('tasa-bcv').innerText = `Bs. ${tasaActual.toFixed(2)}`;
+                    tasaElemento.innerText = `Bs. ${tasaActual.toFixed(2)}`;
                     document.getElementById('sync-time').innerText = `Última sync: ${new Date().toLocaleTimeString()}`;
-                    actualizarPreciosBs();
+                    actualizarTabla();
+                } else {
+                    tasaElemento.innerText = "Error BCV";
                 }
             } catch (err) {
                 console.error("Error cargando BCV:", err);
-                document.getElementById('tasa-bcv').innerText = "Error BCV";
+                tasaElemento.innerText = "Error BCV";
             }
         }
 
@@ -164,11 +239,13 @@
                     { fps: 10, qrbox: { width: 250, height: 150 } },
                     (decodedText) => {
                         document.getElementById('codigo').value = decodedText;
-                        html5QrcodeScanner.stop();
-                        readerDiv.style.display = 'none';
+                        html5QrcodeScanner.stop().then(() => {
+                            readerDiv.style.display = 'none';
+                        });
+                        buscarOAutoFormular(decodedText);
                     },
                     (errorMessage) => { }
-                ).catch(err => console.error("Error al abrir cámara:", err));
+                ).catch(err => console.error("Error cámara:", err));
             } else {
                 if (html5QrcodeScanner) {
                     html5QrcodeScanner.stop().then(() => {
@@ -178,7 +255,13 @@
             }
         }
 
-        let productos = [];
+        function buscarOAutoFormular(codigoScanned) {
+            const prodEncontrado = productos.find(p => p.codigo === codigoScanned);
+            if (prodEncontrado) {
+                document.getElementById('nombre').value = prodEncontrado.nombre;
+                document.getElementById('precio').value = prodEncontrado.precio;
+            }
+        }
 
         function guardarProducto(e) {
             e.preventDefault();
@@ -186,15 +269,30 @@
             const nombre = document.getElementById('nombre').value;
             const precio = parseFloat(document.getElementById('precio').value);
 
-            productos.push({ codigo, nombre, precio });
-            actualizarTabla();
+            const index = productos.findIndex(p => p.codigo === codigo);
+            if (index !== -1) {
+                productos[index] = { codigo, nombre, precio };
+            } else {
+                productos.push({ codigo, nombre, precio });
+            }
 
+            actualizarTabla();
             document.getElementById('form-producto').reset();
         }
 
         function actualizarTabla() {
             const tbody = document.getElementById('tabla-productos');
             tbody.innerHTML = '';
+
+            if (productos.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="4" class="text-center text-muted py-3">No hay productos registrados aún.</td>
+                    </tr>
+                `;
+                return;
+            }
+
             productos.forEach(p => {
                 const precioBs = tasaActual ? (p.precio * tasaActual).toFixed(2) : '0.00';
                 tbody.innerHTML += `
@@ -208,12 +306,10 @@
             });
         }
 
-        function actualizarPreciosBs() {
-            actualizarTabla();
-        }
-
-        // Cargar tasa al iniciar
-        obtenerTasaBCV();
+        // Ejecutar carga de tasa al iniciar
+        window.addEventListener('DOMContentLoaded', () => {
+            obtenerTasaBCV();
+        });
     </script>
 </body>
 </html>
