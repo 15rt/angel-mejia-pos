@@ -5,16 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ángel Mejía - Sistema POS</title>
     
-    <!-- Configuración PWA -->
+    <!-- Configuración PWA con Icono HD -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#0d6efd">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/2965/2965306.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/10149/10149458.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/10149/10149458.png">
 
-    <!-- Bootstrap 5 CSS -->
+    <!-- Bootstrap 5 CSS & Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-    <!-- Bootstrap Icons -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-    <!-- html5-qrcode -->
+    <!-- html5-qrcode para Escáner -->
     <script src="https://unpkg.com/html5-qrcode"></script>
 
     <style>
@@ -63,13 +63,17 @@
 </head>
 <body>
 
-    <!-- Navbar con botón de Modo Oscuro -->
+    <!-- Navbar con Icono HD, Botón Permanente de Instalación y Modo Oscuro -->
     <nav class="navbar navbar-dark bg-primary mb-4 shadow-sm">
-        <div class="container-fluid container">
+        <div class="container-fluid container d-flex justify-content-between align-items-center">
             <span class="navbar-brand mb-0 h1 d-flex align-items-center gap-2">
-                💻 ÁNGEL MEJÍA - POS
+                <img src="https://cdn-icons-png.flaticon.com/512/10149/10149458.png" width="30" height="30" alt="Logo POS">
+                ÁNGEL MEJÍA - POS
             </span>
             <div class="d-flex align-items-center gap-2">
+                <button id="btn-install-navbar" class="btn btn-warning btn-sm fw-bold rounded-pill shadow-sm" onclick="instalarAppManual()">
+                    📲 Instalar App
+                </button>
                 <button class="btn btn-outline-light btn-theme-toggle d-flex align-items-center gap-1" onclick="toggleTheme()" id="btn-theme">
                     <i class="bi bi-moon-stars-fill"></i> <span id="theme-label">Modo Oscuro</span>
                 </button>
@@ -79,10 +83,10 @@
 
     <div class="container mb-5">
         
-        <!-- Banner de Instalación PWA -->
-        <div id="pwa-install-banner" class="alert alert-info border-0 shadow-sm text-center mb-4 card-custom" style="display: none;">
-            <p class="mb-2 fw-bold">📲 ¡Instala esta aplicación en tu teléfono!</p>
-            <button id="btn-install-pwa" class="btn btn-primary fw-bold shadow-sm">
+        <!-- Banner de Instalación PWA (Respaldo) -->
+        <div id="pwa-install-banner" class="alert alert-warning border-0 shadow-sm text-center mb-4 card-custom">
+            <p class="mb-2 fw-bold text-dark">📲 ¿Quieres tener la App en tu pantalla de inicio?</p>
+            <button class="btn btn-primary fw-bold shadow-sm" onclick="instalarAppManual()">
                 ➕ Instalar Ángel Mejía POS
             </button>
         </div>
@@ -173,7 +177,7 @@
         const savedTheme = localStorage.getItem('pos-theme') || 'light';
         document.documentElement.setAttribute('data-bs-theme', savedTheme);
 
-        // Registro de Service Worker
+        // Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
@@ -182,29 +186,28 @@
             });
         }
 
-        // PWA Installation Banner
-        let deferredPrompt;
-        const pwaBanner = document.getElementById('pwa-install-banner');
-        const installBtn = document.getElementById('btn-install-pwa');
+        // Lógica de Instalación PWA (Botón Fijo)
+        let deferredPrompt = null;
 
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
             deferredPrompt = e;
-            pwaBanner.style.display = 'block';
         });
 
-        installBtn.addEventListener('click', async () => {
+        async function instalarAppManual() {
             if (deferredPrompt) {
                 deferredPrompt.prompt();
                 const { outcome } = await deferredPrompt.userChoice;
                 if (outcome === 'accepted') {
-                    pwaBanner.style.display = 'none';
+                    console.log('App instalada con éxito');
                 }
                 deferredPrompt = null;
+            } else {
+                alert("Para instalar la aplicación manualmente:\n\n1. Toca los 3 puntos de Chrome arriba a la derecha.\n2. Selecciona 'Agregar a la pantalla principal' o 'Instalar aplicación'.");
             }
-        });
+        }
 
-        // Lógica de Negocio y BCV
+        // Lógica POS y BCV
         let tasaActual = 0;
         let html5QrcodeScanner = null;
         let productos = [];
@@ -285,11 +288,7 @@
             tbody.innerHTML = '';
 
             if (productos.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="4" class="text-center text-muted py-3">No hay productos registrados aún.</td>
-                    </tr>
-                `;
+                tbody.innerHTML = `<tr><td colspan="4" class="text-center text-muted py-3">No hay productos registrados aún.</td></tr>`;
                 return;
             }
 
@@ -306,7 +305,6 @@
             });
         }
 
-        // Ejecutar carga de tasa al iniciar
         window.addEventListener('DOMContentLoaded', () => {
             obtenerTasaBCV();
         });
