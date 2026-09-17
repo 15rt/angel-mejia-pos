@@ -1,70 +1,65 @@
 const express = require('express');
 const axios = require('axios');
+const open = require('open');
+const path = require('path');
+const os = require('os');
+
 const app = express();
+const PORT = process.env.PORT || 3000;
 
-// Servir archivos estáticos (index.html, manifest.json, sw.js, etc.)
-app.use(express.static('.'));
+// Servir la carpeta estática "public" (donde estará index.html)
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.json());
 
-// Función completa para obtener la tasa oficial BCV con consola detallada
-async function obtenerTasaBCV() {
-    console.log('🔄 Consultando tasa oficial del BCV...');
-    try {
-        // Intento 1: API primaria
-        const response = await axios.get('https://ve.dolarapi.com/v1/dolares/oficial', { timeout: 7000 });
-        if (response.data && response.data.promedio) {
-            const tasa = parseFloat(response.data.promedio);
-            console.log(`📡 Tasa obtenida de Fuente Primaria: Bs. ${tasa}`);
-            return tasa;
-        }
-        throw new Error('Respuesta inválida de la API primaria');
-    } catch (error) {
-        console.warn('⚠️ Falló la fuente primaria del BCV, intentando servidor de respaldo...');
-        
-        // Intento 2: Respaldo secundario (PyDolarVe)
-        try {
-            const backupRes = await axios.get('https://pydolarve.org/api/v1/dollar?page=bcv', { timeout: 5000 });
-            if (backupRes.data && backupRes.data.monedas && backupRes.data.monedas.usd) {
-                const tasaBackup = parseFloat(backupRes.data.monedas.usd.promedio);
-                console.log(`🛡️ Tasa obtenida de Fuente de Respaldo: Bs. ${tasaBackup}`);
-                return tasaBackup;
-            }
-            throw new Error('Estructura de respuesta inválida en respaldo');
-        } catch (backupError) {
-            console.error('❌ Error en servidor de respaldo:', backupError.message);
-            throw backupError;
-        }
-    }
-}
-
-// Ruta API consultada por el frontend en index.html
+// Endpoint de respaldo por si el navegador tiene bloqueo de CORS al consultar las APIs del BCV
 app.get('/api/bcv', async (req, res) => {
-    console.log('📩 Petición recibida en /api/bcv desde el cliente...');
+    const API_PRINCIPAL = "https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv";
+    const API_RESPALDO = "https://ve.dolarapi.com/v1/dolares/oficial";
+
     try {
-        const tasa = await obtenerTasaBCV();
-        res.json({ tasa: tasa, status: 'OK' });
-    } catch (err) {
-        console.error('💥 Error final enviando respuesta al cliente:', err.message);
-        res.status(500).json({ error: 'No se pudo obtener la tasa oficial del BCV' });
+        const respuesta = await axios.get(`${API_PRINCIPAL}&_t=${Date.now()}`, { timeout: 4000 });
+        const valor = parseFloat(respuesta.data?.monedas?.usd?.promedio || respuesta.data?.promedio);
+        if (valor) return res.json({ exito: true, promedio: valor, fuente: 'Principal' });
+    } catch (e) {
+        console.warn("Servidor: API Principal no respondió, intentando API de respaldo...");
     }
+
+    try {
+        const respuesta2 = await axios.get(`${API_RESPALDO}?_t=${Date.now()}`, { timeout: 4000 });
+        const valor2 = parseFloat(respuesta2.data?.promedio);
+        if (valor2) return res.json({ exito: true, promedio: valor2, fuente: 'Respaldo' });
+    } catch (e2) {
+        console.error("Servidor: Fallaron ambas APIs de la tasa BCV.");
+    }
+
+    res.status(500).json({ exito: false, mensaje: "No se pudo obtener la tasa BCV" });
 });
 
-// Inicio del Servidor con marco visual y verificación automática
-const PORT = process.env.PORT || 3000;
+// Detectar IP local para conectarse desde Android / iOS
+function obtenerIPLocal() {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return 'localhost';
+}
+
 app.listen(PORT, async () => {
-    console.log(`\n==================================================`);
-    console.log(`🚀 SISTEMA POS ÁNGEL MEJÍA - SERVIDOR ACTIVO`);
-    console.log(`🌐 Escuchando peticiones en el puerto: ${PORT}`);
-    console.log(`==================================================`);
-    
-    // Verificación inicial de conexión con el BCV al encender
+    const ipLocal = obtenerIPLocal();
+    console.log('====================================================');
+    console.log('🚀 SISTEMA POS ÁNGEL MEJÍA - ACTIVO Y EN VIVO');
+    console.log('====================================================');
+    console.log(`💻 Acceso en esta PC:      http://localhost:${PORT}`);
+    console.log(`📱 Acceso Móvil (Red WiFi): http://${ipLocal}:${PORT}`);
+    console.log('====================================================');
+
     try {
-        const tasaInicial = await obtenerTasaBCV();
-        console.log(`\n✅ SISTEMA POS ABIERTO Y LISTO PARA USAR`);
-        console.log(`💵 Tasa de cambio sincronizada: 1 USD = Bs. ${tasaInicial}`);
-        console.log(`==================================================\n`);
-    } catch (e) {
-        console.log(`\n⚠️ SISTEMA POS ABIERTO (ADVERTENCIA DE SINCRO)`);
-        console.log(`❌ No se pudo sincronizar la tasa inicial, pero el servidor está activo.`);
-        console.log(`==================================================\n`);
+        await open(`http://localhost:${PORT}`);
+    } catch (error) {
+        console.log('Abre http://localhost:3000 manualmente en Chrome.');
     }
 });

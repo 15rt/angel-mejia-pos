@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ángel Mejía - Sistema POS</title>
+    
+    <!-- Configuración PWA e Iconos HD -->
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#0d6efd">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/10149/10149458.png">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/10149/10149458.png">
+
+    <!-- Bootstrap 5 CSS, JS Bundle & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- html5-qrcode para Escáner -->
+    <script src="https://unpkg.com/html5-qrcode"></script>
+
+    <style>
+        html { scroll-behavior: smooth; }
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background-color: #f4f6f9;
+            background-image: radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-size: 20px 20px;
+            min-height: 100vh;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        [data-bs-theme="dark"] body {
+            background-color: #0f172a;
+            background-image: radial-gradient(#1e293b 1px, transparent 1px);
+            color: #f8fafc;
+        }
+        .hero-banner {
+            background: linear-gradient(rgba(15, 23, 42, 0.3), rgba(15, 23, 42, 0.5)), url('imagen.jpg') center/cover no-repeat;
+            border-radius: 0 0 24px 24px;
+            color: white;
+            padding: 2rem 1rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+        }
+        .card-custom {
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            border-radius: 20px;
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.05);
+        }
+        [data-bs-theme="dark"] .card-custom {
+            background: rgba(30, 41, 59, 0.88);
+            border-color: rgba(51, 65, 85, 0.8);
+            box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
+        }
+        .btn-install-animated {
+            background: linear-gradient(135deg, #0d6efd, #00d2ff);
+            border: none;
+            color: #ffffff !important;
+            box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
+            animation: pulse-blue 2s infinite;
+        }
+        @keyframes pulse-blue {
+            0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7); }
+            70% { box-shadow: 0 0 0 12px rgba(13, 110, 253, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
+        }
+        #reader { border-radius: 12px; overflow: hidden; }
+        .offcanvas-custom { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); color: white; }
+    </style>
+</head>
+<body>
+
+    <!-- Header / Banner Hero -->
+    <header class="hero-banner mb-4">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+                <button class="btn btn-outline-light border-0 fs-3 p-1" type="button" data-bs-toggle="offcanvas" data-bs-target="#menuNavegacion">
+                    <i class="bi bi-list"></i>
+                </button>
+                <img src="https://cdn-icons-png.flaticon.com/512/10149/10149458.png" width="45" height="45" alt="Logo POS" class="shadow rounded-circle bg-white p-1">
+                <div>
+                    <h1 class="h4 mb-0 fw-bold text-white">ÁNGEL MEJÍA - POS</h1>
+                    <p class="mb-0 small text-white-50 d-none d-sm-block">Punto de Venta & Inventario</p>
+                </div>
+            </div>
+
+            <div class="d-flex align-items-center gap-2">
+                <button id="btn-install-navbar" class="btn btn-warning btn-sm fw-bold rounded-pill shadow-sm px-3 py-2" onclick="instalarAppManual()">
+                    📲 Instalar
+                </button>
+                <button class="btn btn-outline-light rounded-pill d-flex align-items-center gap-1 py-2" onclick="toggleTheme()" id="btn-theme">
+                    <i class="bi bi-moon-stars-fill"></i> <span id="theme-label" class="d-none d-md-inline">Modo Oscuro</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Menú Lateral Desplegable -->
+    <div class="offcanvas offcanvas-start offcanvas-custom" tabindex="-1" id="menuNavegacion">
+        <div class="offcanvas-header border-bottom border-secondary">
+            <h5 class="offcanvas-title fw-bold text-white d-flex align-items-center gap-2">
+                <i class="bi bi-grid-fill text-primary"></i> Menú Principal
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column gap-3">
+            <a href="#sec-bcv" class="btn btn-outline-light text-start py-2 rounded-3" data-bs-dismiss="offcanvas"><i class="bi bi-bank text-info me-2"></i> Tasa BCV</a>
+            <a href="#sec-escaner" class="btn btn-outline-warning text-start py-2 rounded-3" data-bs-dismiss="offcanvas" onclick="abrirCamaraDirecto()"><i class="bi bi-camera-fill me-2"></i> Escanear Producto</a>
+            <a href="#sec-registrar" class="btn btn-outline-light text-start py-2 rounded-3" data-bs-dismiss="offcanvas"><i class="bi bi-plus-circle-fill text-success me-2"></i> Registrar Producto</a>
+            <a href="#sec-inventario" class="btn btn-outline-light text-start py-2 rounded-3" data-bs-dismiss="offcanvas"><i class="bi bi-cart-check-fill text-primary me-2"></i> Inventario</a>
+            <a href="#sec-cierre" class="btn btn-outline-danger text-start py-2 rounded-3" data-bs-dismiss="offcanvas"><i class="bi bi-cash-stack me-2"></i> Cierre de Caja</a>
+        </div>
+    </div>
+
+    <div class="container mb-5">
+        <!-- Tasa BCV -->
+        <div id="sec-bcv" class="card card-custom mb-4 border-0">
+            <div class="card-body text-center p-4">
+                <h5 class="card-title text-muted fw-semibold mb-2">🏦 Tasa Oficial BCV</h5>
+                <h2 class="display-5 fw-bold text-primary my-2" id="tasa-bcv">Cargando...</h2>
+                <p class="text-muted small mb-3" id="sync-time">Última sync: -</p>
+                <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="obtenerTasaBCV()">🔄 Sincronizar BCV</button>
+            </div>
+        </div>
+
+        <!-- Escáner y Carrito de Compras -->
+        <div id="sec-escaner" class="card card-custom mb-4 border-0">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-bold">📷 Escanear Producto</h5>
+                <div id="reader" style="width: 100%; min-height: 250px; background-color: #f8f9fa; display: none;" class="rounded border mb-3"></div>
+                <button id="btn-scan" class="btn btn-warning w-100 fw-bold text-white shadow-sm py-2 mb-3" onclick="toggleCamara()">
+                    📷 ¡Escanea producto aquí!
+                </button>
+
+                <!-- Carrito Actual y Cobranza -->
+                <div class="border-top pt-3">
+                    <h6 class="fw-bold mb-2">🛒 Orden Actual / Carrito</h6>
+                    <div class="table-responsive mb-2">
+                        <table class="table table-sm align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Cant</th>
+                                    <th>Producto</th>
+                                    <th>USD</th>
+                                    <th>Bs</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabla-carrito">
+                                <tr><td colspan="5" class="text-center text-muted small">Escanear producto para agregar a la venta.</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="d-flex justify-content-between align-items-center fw-bold fs-5 mb-3">
+                        <span>Total:</span>
+                        <span class="text-success"><span id="carrito-total-usd">$0.00</span> / <span id="carrito-total-bs">Bs. 0.00</span></span>
+                    </div>
+                    
+                    <button class="btn btn-success w-100 fw-bold py-2 rounded-3 mb-2" onclick="completarVentaYMostrarTicket()">
+                        🧾 Cobrar y Ver Ticket
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Formulario Registro de Productos -->
+        <div id="sec-registrar" class="card card-custom mb-4 border-0">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-bold">➕ Registrar Producto en Inventario</h5>
+                <form id="form-producto" onsubmit="guardarProducto(event)">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Código de Barras</label>
+                        <input type="text" id="codigo" class="form-control" placeholder="Escanea o escribe el código" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Nombre del Producto</label>
+                        <input type="text" id="nombre" class="form-control" placeholder="Ej: Harina Pan 1kg" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Precio en Dólares ($)</label>
+                        <input type="number" step="0.01" id="precio" class="form-control" placeholder="1.20" required>
+                    </div>
+                    <button type="submit" class="btn btn-success w-100 fw-bold py-2">💾 Guardar en Inventario</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Inventario de Productos -->
+        <div id="sec-inventario" class="card card-custom mb-4 border-0">
+            <div class="card-body p-4">
+                <h5 class="card-title mb-3 fw-bold">🛒 Inventario de Productos Registrados</h5>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Precio ($)</th>
+                                <th>Precio (Bs)</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-productos">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cierre de Caja del Día -->
+        <div id="sec-cierre" class="card card-custom border-0 mb-4">
+            <div class="card-body p-4 text-center">
+                <h5 class="fw-bold mb-3">📊 Cierre de Caja del Día</h5>
+                <div class="row g-2 mb-3">
+                    <div class="col-6">
+                        <div class="p-3 border rounded-3 bg-body-tertiary">
+                            <span class="d-block text-muted small">Ventas Hoy</span>
+                            <strong class="fs-4" id="cierre-cant-ventas">0</strong>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 border rounded-3 bg-body-tertiary">
+                            <span class="d-block text-muted small">Total USD</span>
+                            <strong class="fs-4 text-primary" id="cierre-monto-usd">$0.00</strong>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 border rounded-3 bg-body-tertiary">
+                            <span class="d-block text-muted small">Total Bolívares Acumulados (Tasa BCV)</span>
+                            <strong class="fs-3 text-success" id="cierre-monto-bs">Bs. 0.00</strong>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-danger w-100 fw-bold py-2 rounded-pill" onclick="cerrarCajaDelDia()">
+                    🔒 Finalizar y Cerrar Caja
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL VISTA PREVIA TICKET -->
+    <div class="modal fade" id="modalTicket" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content text-dark">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title fw-bold"><i class="bi bi-receipt"></i> Ticket de Venta</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4" id="contenido-ticket">
+                    <!-- Contenido dinámico del ticket -->
+                </div>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="imprimirTicket()"><i class="bi bi-printer"></i> Imprimir</button>
+                    <button type="button" class="btn btn-success fw-bold" onclick="enviarWhatsAppDesdeModal()"><i class="bi bi-whatsapp"></i> Enviar a WhatsApp</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT POS: INVENTARIO, COBRANZA, BCV Y CIERRE -->
+    <script>
+        const API_PRINCIPAL = "https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv";
+        const API_RESPALDO = "https://ve.dolarapi.com/v1/dolares/oficial";
+
+        let tasaActual = 0;
+        let html5QrcodeScanner = null;
+        
+        let productos = JSON.parse(localStorage.getItem('pos_inventario_productos')) || [];
+        let carrito = [];
+        let ventasDelDia = JSON.parse(localStorage.getItem('ventas_dia_actual')) || { cantidad: 0, totalUsd: 0, totalBs: 0 };
+        let historialCierres = JSON.parse(localStorage.getItem('historial_cierres_caja')) || [];
+        let mensajeWhatsAppActual = "";
+        let cedulaCliente = "";
+
+        function cargarTasaInicial() {
+            const guardada = localStorage.getItem('tasa_bcv_local');
+            if (guardada) {
+                tasaActual = parseFloat(guardada);
+                document.getElementById('tasa-bcv').innerText = `Bs. ${tasaActual.toFixed(2)}`;
+                document.getElementById('sync-time').innerText = "Última sync: (En memoria)";
+            }
+            obtenerTasaBCV();
+            actualizarTabla();
+            actualizarVistaCierre();
+        }
+
+        async function obtenerTasaBCV() {
+            document.getElementById('tasa-bcv').innerText = "Consultando...";
+
+            try {
+                const res = await fetch(`${API_PRINCIPAL}&_t=${Date.now()}`);
+                const data = await res.json();
+                const valor = parseFloat(data.monedas?.usd?.promedio || data.promedio);
+                if (valor) return aplicarTasa(valor);
+            } catch (err) {}
+
+            try {
+                const res2 = await fetch(`${API_RESPALDO}?_t=${Date.now()}`);
+                const data2 = await res2.json();
+                const valor2 = parseFloat(data2.promedio);
+                if (valor2) return aplicarTasa(valor2);
+            } catch (err2) {}
+
+            try {
+                const resNode = await fetch('/api/bcv');
+                const dataNode = await resNode.json();
+                if (dataNode.exito) return aplicarTasa(dataNode.promedio);
+            } catch (err3) {}
+
+            if (!tasaActual) {
+                document.getElementById('tasa-bcv').innerText = "Error BCV";
+            }
+        }
+
+        function aplicarTasa(valor) {
+            tasaActual = valor;
+            localStorage.setItem('tasa_bcv_local', valor);
+            document.getElementById('tasa-bcv').innerText = `Bs. ${tasaActual.toFixed(2)}`;
+            document.getElementById('sync-time').innerText = `Última sync: ${new Date().toLocaleTimeString()}`;
+            actualizarTabla();
+            actualizarCarrito();
+        }
+
+        function abrirCamaraDirecto() {
+            const readerDiv = document.getElementById('reader');
+            if (readerDiv.style.display === 'none') toggleCamara();
+        }
+
+        function toggleCamara() {
+            const readerDiv = document.getElementById('reader');
+            if (readerDiv.style.display === 'none') {
+                readerDiv.style.display = 'block';
+                html5QrcodeScanner = new Html5Qrcode("reader");
+                html5QrcodeScanner.start(
+                    { facingMode: "environment" },
+                    { fps: 10, qrbox: { width: 250, height: 150 } },
+                    (text) => {
+                        document.getElementById('codigo').value = text;
+                        html5QrcodeScanner.stop().then(() => readerDiv.style.display = 'none');
+                        agregarAlCarritoPorCodigo(text);
+                    },
+                    () => {}
+                );
+            } else if (html5QrcodeScanner) {
+                html5QrcodeScanner.stop().then(() => readerDiv.style.display = 'none');
+            }
+        }
+
+        function agregarAlCarritoPorCodigo(codigoScanned) {
+            const prod = productos.find(p => p.codigo === codigoScanned);
+            if (prod) {
+                const item = carrito.find(c => c.codigo === codigoScanned);
+                if (item) item.cant += 1;
+                else carrito.push({ ...prod, cant: 1 });
+                actualizarCarrito();
+            } else {
+                document.getElementById('codigo').value = codigoScanned;
+                alert("El producto escaneado no existe en tu inventario. Regístralo en el formulario de abajo.");
+            }
+        }
+
+        function eliminarDelCarrito(codigo) {
+            carrito = carrito.filter(item => item.codigo !== codigo);
+            actualizarCarrito();
+        }
+
+        function actualizarCarrito() {
+            const tbody = document.getElementById('tabla-carrito');
+            tbody.innerHTML = '';
+
+            if (carrito.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted small">Escanear producto para agregar a la venta.</td></tr>`;
+                document.getElementById('carrito-total-usd').innerText = '$0.00';
+                document.getElementById('carrito-total-bs').innerText = 'Bs. 0.00';
+                return;
+            }
+
+            let totalUsd = 0;
+            carrito.forEach(item => {
+                const itemUsd = item.precio * item.cant;
+                const itemBs = tasaActual ? (itemUsd * tasaActual).toFixed(2) : '0.00';
+                totalUsd += itemUsd;
+
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${item.cant}</td>
+                        <td>${item.nombre}</td>
+                        <td>$${itemUsd.toFixed(2)}</td>
+                        <td>Bs. ${itemBs}</td>
+                        <td><button class="btn btn-outline-danger btn-sm p-0 px-1" onclick="eliminarDelCarrito('${item.codigo}')">✕</button></td>
+                    </tr>
+                `;
+            });
+
+            const totalBs = tasaActual ? (totalUsd * tasaActual).toFixed(2) : '0.00';
+            document.getElementById('carrito-total-usd').innerText = `$${totalUsd.toFixed(2)}`;
+            document.getElementById('carrito-total-bs').innerText = `Bs. ${totalBs}`;
+        }
+
+        function completarVentaYMostrarTicket() {
+            if (carrito.length === 0) {
+                alert("El carrito está vacío. Escanea o selecciona productos antes de cobrar.");
+                return;
+            }
+
+            let inputCedula = prompt("Ingrese la Cédula o RIF del cliente (Opcional para Pago Móvil / Garantía):", "V-");
+            cedulaCliente = inputCedula ? inputCedula.trim() : "V-00000000";
+
+            let totalUsd = 0;
+            let fecha = new Date().toLocaleString();
+            
+            let htmlTicket = `
+                <div class="text-center mb-3">
+                    <h4 class="fw-bold mb-0">ÁNGEL MEJÍA - POS</h4>
+                    <small class="text-muted">Comprobante de Venta</small><br>
+                    <small class="text-muted"><strong>CI/RIF:</strong> ${cedulaCliente}</small><br>
+                    <small class="text-muted">${fecha}</small>
+                </div>
+                <hr>
+                <table class="table table-borderless table-sm small">
+                    <thead>
+                        <tr class="border-bottom">
+                            <th>Cant</th>
+                            <th>Producto</th>
+                            <th class="text-end">Total ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            mensajeWhatsAppActual = `🧾 *TICKET DE COMPRA - ÁNGEL MEJÍA POS*\n`;
+            mensajeWhatsAppActual += `Cliente CI/RIF: ${cedulaCliente}\n`;
+            mensajeWhatsAppActual += `Fecha: ${fecha}\n`;
+            mensajeWhatsAppActual += `--------------------------------\n`;
+
+            carrito.forEach(item => {
+                const itemUsd = item.precio * item.cant;
+                totalUsd += itemUsd;
+                
+                htmlTicket += `
+                    <tr>
+                        <td>${item.cant}x</td>
+                        <td>${item.nombre}</td>
+                        <td class="text-end">$${itemUsd.toFixed(2)}</td>
+                    </tr>
+                `;
+                mensajeWhatsAppActual += `${item.cant}x ${item.nombre} - $${itemUsd.toFixed(2)}\n`;
+            });
+
+            const totalBs = tasaActual ? (totalUsd * tasaActual).toFixed(2) : '0.00';
+
+            htmlTicket += `
+                    </tbody>
+                </table>
+                <hr>
+                <div class="d-flex justify-content-between fw-bold">
+                    <span>TOTAL USD:</span>
+                    <span>$${totalUsd.toFixed(2)}</span>
+                </div>
+                <div class="d-flex justify-content-between fw-bold text-success">
+                    <span>TOTAL BS (Tasa BCV ${tasaActual.toFixed(2)}):</span>
+                    <span>Bs. ${totalBs}</span>
+                </div>
+                <hr>
+                <p class="text-center small text-muted mb-0">¡Gracias por su compra!</p>
+            `;
+
+            mensajeWhatsAppActual += `--------------------------------\n`;
+            mensajeWhatsAppActual += `*TOTAL USD:* $${totalUsd.toFixed(2)}\n`;
+            mensajeWhatsAppActual += `*TOTAL BS (BCV ${tasaActual.toFixed(2)}):* Bs. ${totalBs}\n\n`;
+            mensajeWhatsAppActual += `¡Gracias por su compra!`;
+
+            document.getElementById('contenido-ticket').innerHTML = htmlTicket;
+
+            ventasDelDia.cantidad += 1;
+            ventasDelDia.totalUsd += totalUsd;
+            ventasDelDia.totalBs += parseFloat(totalBs);
+            localStorage.setItem('ventas_dia_actual', JSON.stringify(ventasDelDia));
+
+            actualizarVistaCierre();
+
+            carrito = [];
+            actualizarCarrito();
+
+            const modal = new bootstrap.Modal(document.getElementById('modalTicket'));
+            modal.show();
+        }
+
+        function enviarWhatsAppDesdeModal() {
+            window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(mensajeWhatsAppActual)}`, '_blank');
+        }
+
+        function imprimirTicket() {
+            window.print();
+        }
+
+        function actualizarVistaCierre() {
+            document.getElementById('cierre-cant-ventas').innerText = ventasDelDia.cantidad;
+            document.getElementById('cierre-monto-usd').innerText = `$${ventasDelDia.totalUsd.toFixed(2)}`;
+            document.getElementById('cierre-monto-bs').innerText = `Bs. ${ventasDelDia.totalBs.toFixed(2)}`;
+        }
+
+        function cerrarCajaDelDia() {
+            if (ventasDelDia.cantidad === 0) {
+                alert("No hay ventas registradas en el día.");
+                return;
+            }
+
+            const fechaCierre = new Date().toLocaleString();
+            const resumenCierre = {
+                fecha: fechaCierre,
+                ventas: ventasDelDia.cantidad,
+                usd: ventasDelDia.totalUsd.toFixed(2),
+                bs: ventasDelDia.totalBs.toFixed(2),
+                tasa: tasaActual
+            };
+
+            const confirmar = confirm(
+                `🔒 CONFIRMAR CIERRE DE CAJA\n\n` +
+                `📅 Fecha: ${fechaCierre}\n` +
+                `🛒 Ventas Totales: ${resumenCierre.ventas}\n` +
+                `💵 Total USD: $${resumenCierre.usd}\n` +
+                `🇻🇪 Total Bolívares: Bs. ${resumenCierre.bs}\n\n` +
+                `¿Deseas finalizar la jornada y reiniciar el contador a $0.00?`
+            );
+
+            if (confirmar) {
+                historialCierres.unshift(resumenCierre);
+                localStorage.setItem('historial_cierres_caja', JSON.stringify(historialCierres));
+
+                ventasDelDia = { cantidad: 0, totalUsd: 0, totalBs: 0 };
+                localStorage.removeItem('ventas_dia_actual');
+                actualizarVistaCierre();
+
+                alert("✅ Cierre de caja realizado y guardado con éxito.");
+            }
+        }
+
+        function guardarProducto(e) {
+            e.preventDefault();
+            const codigo = document.getElementById('codigo').value.trim();
+            const nombre = document.getElementById('nombre').value.trim();
+            const precio = parseFloat(document.getElementById('precio').value);
+
+            const index = productos.findIndex(p => p.codigo === codigo);
+            if (index !== -1) productos[index] = { codigo, nombre, precio };
+            else productos.push({ codigo, nombre, precio });
+
+            localStorage.setItem('pos_inventario_productos', JSON.stringify(productos));
+
+            actualizarTabla();
+            document.getElementById('form-producto').reset();
+            alert(`✅ Producto "${nombre}" guardado en el inventario.`);
+        }
+
+        function actualizarTabla() {
+            const tbody = document.getElementById('tabla-productos');
+            tbody.innerHTML = '';
+
+            if (productos.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted py-3">No hay productos en inventario aún. Regístralos en el formulario superior.</td></tr>`;
+                return;
+            }
+
+            productos.forEach(p => {
+                const precioBs = tasaActual ? (p.precio * tasaActual).toFixed(2) : '0.00';
+                tbody.innerHTML += `
+                    <tr>
+                        <td><code>${p.codigo}</code></td>
+                        <td>${p.nombre}</td>
+                        <td>$${p.precio.toFixed(2)}</td>
+                        <td class="fw-bold text-success">Bs. ${precioBs}</td>
+                        <td>
+                            <button class="btn btn-warning btn-sm fw-bold" onclick="agregarAlCarritoPorCodigo('${p.codigo}')">
+                                🛒 Vender
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const newTheme = html.getAttribute('data-bs-theme') === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-bs-theme', newTheme);
+            document.getElementById('btn-theme').innerHTML = newTheme === 'dark' 
+                ? '<i class="bi bi-sun-fill"></i> <span id="theme-label" class="d-none d-md-inline">Modo Claro</span>'
+                : '<i class="bi bi-moon-stars-fill"></i> <span id="theme-label" class="d-none d-md-inline">Modo Oscuro</span>';
+        }
+
+        let deferredPrompt = null;
+        window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); deferredPrompt = e; });
+        function instalarAppManual() {
+            if (deferredPrompt) { deferredPrompt.prompt(); deferredPrompt = null; }
+            else { alert("Instala manualmente desde las opciones de tu navegador."); }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            cargarTasaInicial();
+            setInterval(obtenerTasaBCV, 30 * 60 * 1000);
+        });
+    </script>
+</body>
+</html>
