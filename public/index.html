@@ -260,9 +260,6 @@
 
     <!-- SCRIPT POS: INVENTARIO, COBRANZA, BCV Y CIERRE -->
     <script>
-        const API_PRINCIPAL = "https://pydolarvenezuela-api.vercel.app/api/v1/dollar?page=bcv";
-        const API_RESPALDO = "https://ve.dolarapi.com/v1/dolares/oficial";
-
         let tasaActual = 0;
         let html5QrcodeScanner = null;
         
@@ -272,6 +269,55 @@
         let historialCierres = JSON.parse(localStorage.getItem('historial_cierres_caja')) || [];
         let mensajeWhatsAppActual = "";
         let cedulaCliente = "";
+
+        // FUNCIÓN CORREGIDA: Obtiene la tasa BCV sin bloqueos de red
+        async function obtenerTasaBCV() {
+            const elTasa = document.getElementById('tasa-bcv');
+            const elTime = document.getElementById('sync-time');
+            
+            if (elTasa) elTasa.innerText = "Sincronizando...";
+
+            try {
+                // Intento 1: API de PyDolarVenezuela (Unidad BCV)
+                let res = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
+                if (res.ok) {
+                    let data = await res.json();
+                    if (data && data.price) {
+                        aplicarTasa(parseFloat(data.price));
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn("Falla en API 1, probando respaldo...", e);
+            }
+
+            try {
+                // Intento 2 (Respaldo): DolarApi Oficial
+                let res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
+                if (res.ok) {
+                    let data = await res.json();
+                    if (data && data.promedio) {
+                        aplicarTasa(parseFloat(data.promedio));
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.error("Falla en API 2", e);
+            }
+
+            // Si fallan las peticiones de red, recurre a la memoria guardada
+            const guardada = localStorage.getItem('tasa_bcv_local');
+            if (guardada) {
+                tasaActual = parseFloat(guardada);
+                if (elTasa) elTasa.innerText = `Bs. ${tasaActual.toFixed(2)}`;
+                if (elTime) elTime.innerText = "Última sync: (Modo Offline)";
+                actualizarTabla();
+                actualizarCarrito();
+            } else {
+                if (elTasa) elTasa.innerText = "Error de red";
+                alert("No se pudo obtener la tasa oficial. Revisa tu conexión a internet.");
+            }
+        }
 
         function cargarTasaInicial() {
             const guardada = localStorage.getItem('tasa_bcv_local');
@@ -285,25 +331,6 @@
             actualizarVistaCierre();
         }
 
-       async function sincronizarBCV() {
-    try {
-        // Se conecta a una API pública de PyDolarVenezuela
-        const respuesta = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
-        const datos = await respuesta.json();
-        
-        if (datos && datos.price) {
-            const tasaOficial = datos.price;
-            localStorage.setItem('tasa_bcv_local', tasaOficial);
-            alert(`Tasa actualizada exitosamente: ${tasaOficial} Bs`);
-            location.reload(); // Recarga la página para aplicar los cambios
-        } else {
-            alert("No se pudo leer el precio desde la API.");
-        }
-    } catch (error) {
-        console.error("Error de conexión:", error);
-        alert("Falla de red al intentar sincronizar. Verifica tu internet.");
-    }
-}
         function aplicarTasa(valor) {
             tasaActual = valor;
             localStorage.setItem('tasa_bcv_local', valor);
