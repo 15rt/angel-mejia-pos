@@ -53,18 +53,6 @@
             border-color: rgba(51, 65, 85, 0.8);
             box-shadow: 0 4px 25px rgba(0, 0, 0, 0.3);
         }
-        .btn-install-animated {
-            background: linear-gradient(135deg, #0d6efd, #00d2ff);
-            border: none;
-            color: #ffffff !important;
-            box-shadow: 0 4px 15px rgba(13, 110, 253, 0.4);
-            animation: pulse-blue 2s infinite;
-        }
-        @keyframes pulse-blue {
-            0% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0.7); }
-            70% { box-shadow: 0 0 0 12px rgba(13, 110, 253, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(13, 110, 253, 0); }
-        }
         #reader { border-radius: 12px; overflow: hidden; }
         .offcanvas-custom { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); color: white; }
     </style>
@@ -120,7 +108,11 @@
                 <h5 class="card-title text-muted fw-semibold mb-2">🏦 Tasa Oficial BCV</h5>
                 <h2 class="display-5 fw-bold text-primary my-2" id="tasa-bcv">Cargando...</h2>
                 <p class="text-muted small mb-3" id="sync-time">Última sync: -</p>
-                <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="obtenerTasaBCV()">🔄 Sincronizar BCV</button>
+                
+                <div class="d-flex justify-content-center gap-2 flex-wrap">
+                    <button class="btn btn-outline-primary btn-sm rounded-pill px-3" onclick="obtenerTasaBCV()">🔄 Auto-Sync BCV</button>
+                    <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" onclick="fijarTasaManual()">✏️ Fijar Manual</button>
+                </div>
             </div>
         </div>
 
@@ -227,7 +219,7 @@
                     </div>
                     <div class="col-12">
                         <div class="p-3 border rounded-3 bg-body-tertiary">
-                            <span class="d-block text-muted small">Total Bolívares Acumulados (Tasa BCV)</span>
+                            <span class="d-block text-muted small">Total Bolívares Acumulados</span>
                             <strong class="fs-3 text-success" id="cierre-monto-bs">Bs. 0.00</strong>
                         </div>
                     </div>
@@ -258,7 +250,7 @@
         </div>
     </div>
 
-    <!-- SCRIPT POS: INVENTARIO, COBRANZA, BCV Y CIERRE -->
+    <!-- SCRIPT POS COMPLETO CON MULTI-API -->
     <script>
         let tasaActual = 0;
         let html5QrcodeScanner = null;
@@ -270,42 +262,55 @@
         let mensajeWhatsAppActual = "";
         let cedulaCliente = "";
 
-        // FUNCIÓN CORREGIDA: Obtiene la tasa BCV sin bloqueos de red
+        // OBTENER TASA (Triple API en cascada)
         async function obtenerTasaBCV() {
             const elTasa = document.getElementById('tasa-bcv');
             const elTime = document.getElementById('sync-time');
-            
             if (elTasa) elTasa.innerText = "Sincronizando...";
 
+            // Opción 1: DolarApi Oficial
             try {
-                // Intento 1: API de PyDolarVenezuela (Unidad BCV)
-                let res = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
-                if (res.ok) {
-                    let data = await res.json();
-                    if (data && data.price) {
-                        aplicarTasa(parseFloat(data.price));
-                        return;
-                    }
-                }
-            } catch (e) {
-                console.warn("Falla en API 1, probando respaldo...", e);
-            }
-
-            try {
-                // Intento 2 (Respaldo): DolarApi Oficial
                 let res = await fetch('https://ve.dolarapi.com/v1/dolares/oficial');
                 if (res.ok) {
                     let data = await res.json();
-                    if (data && data.promedio) {
+                    if (data && data.promedio && data.promedio > 0) {
                         aplicarTasa(parseFloat(data.promedio));
                         return;
                     }
                 }
             } catch (e) {
-                console.error("Falla en API 2", e);
+                console.warn("Falla en API DolarApi", e);
             }
 
-            // Si fallan las peticiones de red, recurre a la memoria guardada
+            // Opción 2: PyDolarVenezuela
+            try {
+                let res = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
+                if (res.ok) {
+                    let data = await res.json();
+                    if (data && data.price && data.price > 0) {
+                        aplicarTasa(parseFloat(data.price));
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn("Falla en API PyDolar", e);
+            }
+
+            // Opción 3: API Directa de Respuestas Financieras
+            try {
+                let res = await fetch('https://bcv-exchange-rates.vercel.app/get_bcv_exchange_rates');
+                if (res.ok) {
+                    let data = await res.json();
+                    if (data && data.USD) {
+                        aplicarTasa(parseFloat(data.USD));
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn("Falla en API 3", e);
+            }
+
+            // Respaldo por memoria local
             const guardada = localStorage.getItem('tasa_bcv_local');
             if (guardada) {
                 tasaActual = parseFloat(guardada);
@@ -314,8 +319,21 @@
                 actualizarTabla();
                 actualizarCarrito();
             } else {
-                if (elTasa) elTasa.innerText = "Error de red";
-                alert("No se pudo obtener la tasa oficial. Revisa tu conexión a internet.");
+                if (elTasa) elTasa.innerText = "Sin conexión";
+                fijarTasaManual();
+            }
+        }
+
+        function fijarTasaManual() {
+            let valorInput = prompt("Ingresa el valor del dólar BCV manualmente:", tasaActual > 0 ? tasaActual : "");
+            if (valorInput !== null && valorInput !== "") {
+                let parsed = parseFloat(valorInput.replace(',', '.'));
+                if (!isNaN(parsed) && parsed > 0) {
+                    aplicarTasa(parsed);
+                    document.getElementById('sync-time').innerText = "Última sync: (Manual)";
+                } else {
+                    alert("Por favor ingresa un número válido.");
+                }
             }
         }
 
@@ -374,7 +392,7 @@
                 actualizarCarrito();
             } else {
                 document.getElementById('codigo').value = codigoScanned;
-                alert("El producto escaneado no existe en tu inventario. Regístralo en el formulario de abajo.");
+                alert("El producto no está en el inventario. Se colocó el código en el formulario para registrarlo.");
             }
         }
 
@@ -418,11 +436,16 @@
 
         function completarVentaYMostrarTicket() {
             if (carrito.length === 0) {
-                alert("El carrito está vacío. Escanea o selecciona productos antes de cobrar.");
+                alert("El carrito está vacío. Escanea productos antes de cobrar.");
                 return;
             }
 
-            let inputCedula = prompt("Ingrese la Cédula o RIF del cliente (Opcional para Pago Móvil / Garantía):", "V-");
+            if (tasaActual === 0) {
+                alert("Atención: No hay una tasa asignada. Haz clic en 'Fijar Manual' o 'Auto-Sync' en el módulo superior de Tasa BCV.");
+                return;
+            }
+
+            let inputCedula = prompt("Ingrese la Cédula o RIF del cliente (Opcional):", "V-");
             cedulaCliente = inputCedula ? inputCedula.trim() : "V-00000000";
 
             let totalUsd = 0;
@@ -466,7 +489,7 @@
                 mensajeWhatsAppActual += `${item.cant}x ${item.nombre} - $${itemUsd.toFixed(2)}\n`;
             });
 
-            const totalBs = tasaActual ? (totalUsd * tasaActual).toFixed(2) : '0.00';
+            const totalBs = (totalUsd * tasaActual).toFixed(2);
 
             htmlTicket += `
                     </tbody>
@@ -540,7 +563,7 @@
                 `🛒 Ventas Totales: ${resumenCierre.ventas}\n` +
                 `💵 Total USD: $${resumenCierre.usd}\n` +
                 `🇻🇪 Total Bolívares: Bs. ${resumenCierre.bs}\n\n` +
-                `¿Deseas finalizar la jornada y reiniciar el contador a $0.00?`
+                `¿Deseas finalizar la jornada y reiniciar los montos a $0.00?`
             );
 
             if (confirmar) {
