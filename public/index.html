@@ -285,34 +285,25 @@
             actualizarVistaCierre();
         }
 
-        async function obtenerTasaBCV() {
-            document.getElementById('tasa-bcv').innerText = "Consultando...";
-
-            try {
-                const res = await fetch(`${API_PRINCIPAL}&_t=${Date.now()}`);
-                const data = await res.json();
-                const valor = parseFloat(data.monedas?.usd?.promedio || data.promedio);
-                if (valor) return aplicarTasa(valor);
-            } catch (err) {}
-
-            try {
-                const res2 = await fetch(`${API_RESPALDO}?_t=${Date.now()}`);
-                const data2 = await res2.json();
-                const valor2 = parseFloat(data2.promedio);
-                if (valor2) return aplicarTasa(valor2);
-            } catch (err2) {}
-
-            try {
-                const resNode = await fetch('/api/bcv');
-                const dataNode = await resNode.json();
-                if (dataNode.exito) return aplicarTasa(dataNode.promedio);
-            } catch (err3) {}
-
-            if (!tasaActual) {
-                document.getElementById('tasa-bcv').innerText = "Error BCV";
-            }
+       async function sincronizarBCV() {
+    try {
+        // Se conecta a una API pública de PyDolarVenezuela
+        const respuesta = await fetch('https://pydolarvenezuela-api.vercel.app/api/v1/dollar/unit/bcv');
+        const datos = await respuesta.json();
+        
+        if (datos && datos.price) {
+            const tasaOficial = datos.price;
+            localStorage.setItem('tasa_bcv_local', tasaOficial);
+            alert(`Tasa actualizada exitosamente: ${tasaOficial} Bs`);
+            location.reload(); // Recarga la página para aplicar los cambios
+        } else {
+            alert("No se pudo leer el precio desde la API.");
         }
-
+    } catch (error) {
+        console.error("Error de conexión:", error);
+        alert("Falla de red al intentar sincronizar. Verifica tu internet.");
+    }
+}
         function aplicarTasa(valor) {
             tasaActual = valor;
             localStorage.setItem('tasa_bcv_local', valor);
